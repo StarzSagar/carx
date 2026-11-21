@@ -1,0 +1,13 @@
+# CAR BATTLE ARENA — Python dependencies
+#
+# Termux note: pydantic 2.x needs a Rust build of pydantic-core that fails on
+# Android/Termux. FastAPI 0.110.x is the newest release that still supports
+# pydantic 1.x, so this project intentionally stays on pydantic 1.10.
+fastapi==0.110.3
+pydantic==1.10.27
+uvicorn==0.54.0
+websockets==17.4
+
+# Test-only dependencies
+pytest==9.2.0
+httpx==0.28.1

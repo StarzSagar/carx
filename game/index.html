@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#07090d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>CAR BATTLE ARENA</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0d12'/%3E%3Cpath d='M10 38h44l-6 12H16z' fill='%23ff6b2c'/%3E%3Cpath d='M18 38l7-14h16l7 14z' fill='%23f5f7fb'/%3E%3Ccircle cx='20' cy='50' r='5' fill='%232ee6d6'/%3E%3Ccircle cx='44' cy='50' r='5' fill='%232ee6d6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/game/style.css">
+</head>
+<body>
+
+<canvas id="gameCanvas" aria-hidden="true"></canvas>
+<div class="screen-vignette" aria-hidden="true"></div>
+
+<!-- =====================================================================
+     HUD
+     ===================================================================== -->
+<div id="hud" class="hidden" aria-live="polite">
+  <div class="hud-top">
+    <div class="hud-side hud-left">
+      <div class="mode-pill"><i></i><span id="hudMode">UNLIMITED</span></div>
+      <div class="self-chip" id="selfChip">
+        <span class="color-dot" id="selfDot"></span>
+        <b id="selfName">YOU</b>
+        <span class="score-pill" id="selfScore">0</span>
+      </div>
+    </div>
+
+    <div class="timer-block" id="timerBlock">
+      <div class="timer" id="hudTimer">2:00</div>
+      <div class="timer-label" id="hudPhase">RACE</div>
+    </div>
+
+    <div class="hud-side hud-right">
+      <div class="meta-chip" title="Connected players"><span class="meta-icon">◉</span><span id="hudPlayers">0</span></div>
+      <div class="meta-chip ping-chip" id="hudPing" title="Latency">--</div>
+      <button class="icon-btn" id="pauseBtn" aria-label="Open arena menu">☰</button>
+    </div>
+  </div>
+
+  <aside class="leaderboard" id="leaderboard" aria-label="Live leaderboard"></aside>
+  <aside class="killfeed" id="killfeed" aria-live="polite"></aside>
+
+  <div class="time-warning hidden" id="timeWarning">⚠ 10 SECONDS LEFT</div>
+
+  <div class="countdown hidden" id="countdown" aria-live="assertive">3</div>
+
+  <div class="respawn hidden" id="respawnCard">
+    <span>RESPAWNING IN</span>
+    <strong id="respawnTimer">3</strong>
+  </div>
+
+  <div class="spectator-banner hidden" id="spectatorBanner">
+    <b>SPECTATING</b>
+    <span id="spectatorSub">Next match starts in the lobby</span>
+  </div>
+
+  <div class="race-toast hidden" id="raceToast"></div>
+
+  <div class="touch-controls" id="touchControls" aria-label="Touch driving controls">
+    <div class="steer-cluster">
+      <button class="control-btn steer-btn" data-control="left" aria-label="Steer left">
+        <span class="ctrl-arrow">◀</span><span class="ctrl-caption">LEFT</span>
+      </button>
+      <button class="control-btn steer-btn" data-control="right" aria-label="Steer right">
+        <span class="ctrl-arrow">▶</span><span class="ctrl-caption">RIGHT</span>
+      </button>
+    </div>
+    <div class="pedal-cluster">
+      <button class="control-btn brake-btn" data-control="brake" aria-label="Brake and reverse">
+        <span class="ctrl-arrow">▼</span><span class="ctrl-caption">BRAKE</span>
+      </button>
+      <button class="control-btn gas-btn" data-control="accel" aria-label="Accelerate">
+        <span class="ctrl-arrow">▲</span><span class="ctrl-caption">GAS</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================================
+     MAIN MENU / LOBBY
+     ===================================================================== -->
+<div id="menu" class="overlay menu-overlay">
+  <div class="menu-shell">
+    <header class="hero">
+      <div class="hero-topline">
+        <span class="live-dot"></span> REAL-TIME MULTIPLAYER ARENA
+      </div>
+      <h1 class="logo">
+        <span class="logo-line">CAR <em>BATTLE</em></span>
+        <span class="logo-line logo-big">ARENA</span>
+      </h1>
+      <div class="hazard-rule" aria-hidden="true"></div>
+      <p class="tagline">Smash. Survive. Dominate the asphalt.</p>
+      <div class="feature-chips">
+        <span>⚡ Instant play</span>
+        <span>💥 Car combat</span>
+        <span>📱 Phone ready</span>
+      </div>
+      <div class="hero-note">
+        <span>HOSTED ON THIS PHONE</span>
+        <span>FRIENDS JOIN OVER WI-FI</span>
+      </div>
+    </header>
+
+    <section id="joinPanel" class="panel join-panel">
+      <div class="panel-kicker">DRIVER CHECK-IN</div>
+      <h2>ENTER THE ARENA</h2>
+      <label for="nameInput">DRIVER NAME</label>
+      <div class="input-row">
+        <input id="nameInput" maxlength="16" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="Max 16 characters" aria-label="Driver name">
+        <button id="joinBtn" class="primary">JOIN</button>
+      </div>
+      <p class="hint">No account, no download. Your name disappears when you leave.</p>
+      <div class="conn-status" id="connStatus">
+        <span class="status-dot"></span><span id="connText">Not connected</span>
+      </div>
+      <div class="howto">
+        <h3>CONTROLS</h3>
+        <div class="key-row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>or arrow keys</span></div>
+        <div class="key-row"><span class="touch-icon">◀ ▶ ▲ ▼</span><span>touch buttons on phone</span></div>
+      </div>
+    </section>
+
+    <section id="lobbyPanel" class="panel lobby-panel hidden">
+      <div class="lobby-head">
+        <div>
+          <div class="panel-kicker">MATCH SETUP</div>
+          <h2>LOBBY</h2>
+          <p class="hint" id="lobbySub">Waiting for the host…</p>
+        </div>
+        <div class="count-badge"><b id="playerCount">1</b><span>DRIVERS</span></div>
+      </div>
+
+      <div class="player-list" id="playerList" aria-live="polite"></div>
+
+      <div class="settings" id="settingsBox">
+        <div class="setting-group">
+          <div class="setting-label">GAME MODE</div>
+          <div class="mode-grid">
+            <button class="mode-card selected" data-mode="unlimited" type="button">
+              <b>UNLIMITED</b>
+              <span>Respawn after 3s &amp; keep scoring</span>
+            </button>
+            <button class="mode-card" data-mode="hardcore" type="button">
+              <b>HARDCORE</b>
+              <span>One life. Eliminated = spectator.</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <div class="setting-label">RACE DURATION</div>
+          <div class="duration-row">
+            <button class="chip-btn" data-duration="60" type="button">1 MIN</button>
+            <button class="chip-btn selected" data-duration="120" type="button">2 MIN</button>
+            <button class="chip-btn" data-duration="300" type="button">5 MIN</button>
+            <div class="custom-duration">
+              <input id="customMinutes" type="number" min="1" max="60" step="1" inputmode="numeric" placeholder="Custom" aria-label="Custom duration in minutes">
+              <button id="setCustom" class="chip-btn" type="button">SET</button>
+            </div>
+          </div>
+          <p class="hint" id="durationHint">1–60 custom minutes</p>
+        </div>
+
+        <div class="setting-group toggle-row">
+          <div>
+            <div class="setting-label">TRAFFIC HAZARD</div>
+            <p class="hint">Wrong-way NPC cars</p>
+          </div>
+          <button id="trafficToggle" class="toggle" role="switch" aria-checked="true" type="button"><span></span></button>
+        </div>
+      </div>
+
+      <button id="startBtn" class="primary big" type="button">START RACE</button>
+      <p class="hint center" id="startHint">Only the host can start the race.</p>
+      <button id="shareBtn" class="ghost small" type="button">COPY INVITE LINK</button>
+    </section>
+  </div>
+  <footer class="menu-footer">
+    <span>SERVER-AUTHORITATIVE PHYSICS</span>
+    <span>NO DOWNLOADS</span>
+    <span>NO ACCOUNTS</span>
+  </footer>
+</div>
+
+<!-- =====================================================================
+     GAME OVER
+     ===================================================================== -->
+<div id="gameover" class="overlay results-overlay hidden">
+  <div class="result-card">
+    <div class="result-kicker" id="resultKicker">RACE COMPLETE</div>
+    <div class="winner-spot">
+      <div class="trophy">🏆</div>
+      <div class="winner-label">WINNER</div>
+      <h2 id="winnerName">—</h2>
+      <div class="winner-underline"></div>
+    </div>
+    <p class="result-reason" id="resultReason"></p>
+    <div class="final-board" id="finalBoard"></div>
+    <div class="result-actions">
+      <button id="backToLobby" class="primary hidden" type="button">BACK TO LOBBY</button>
+      <p id="waitHost" class="hint center">Waiting for the host to return to the lobby…</p>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================================
+     IN-GAME MENU
+     ===================================================================== -->
+<div id="pauseMenu" class="overlay pause-overlay hidden">
+  <div class="panel pause-card">
+    <div class="panel-kicker">RACE IN PROGRESS</div>
+    <h2>ARENA MENU</h2>
+    <p class="hint">The match keeps running while this menu is open. Your car coasts.</p>
+    <button id="resumeBtn" class="primary" type="button">RESUME RACE</button>
+    <button id="fullscreenBtn" class="ghost" type="button">TOGGLE FULLSCREEN</button>
+    <button id="leaveBtn" class="danger" type="button">LEAVE MATCH</button>
+  </div>
+</div>
+
+<!-- =====================================================================
+     DISCONNECT
+     ===================================================================== -->
+<div id="disconnect" class="overlay pause-overlay hidden">
+  <div class="panel pause-card">
+    <div class="panel-kicker">SIGNAL LOST</div>
+    <h2>CONNECTION LOST</h2>
+    <p class="hint">The arena link dropped. Make sure you are still on the host phone's Wi-Fi hotspot, then rejoin.</p>
+    <button id="rejoinBtn" class="primary" type="button">REJOIN ARENA</button>
+    <button id="disconnectMenuBtn" class="ghost" type="button">BACK TO MENU</button>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden" role="status"></div>
+
+<script src="/game/game.js"></script>
+</body>
+</html>
